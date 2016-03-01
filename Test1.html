@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <script type="text/javascript" src="http://cdn.robotwebtools.org/EventEmitter2/current/eventemitter2.min.js"></script>
+    <script type="text/javascript" src="http://cdn.robotwebtools.org/roslibjs/current/roslib.min.js"></script>
+    <!--<script type="text/javascript" src="https://raw.github.com/okstate-robotics/rosbridge_light/master/ros.js"></script>-->
+    <script type="text/javascript">
+        var x;
+        var y;
+        var z;
+        var l=0, r=0, u=0,d=0;
+        var theta;
+        var img;
+        var ros;
+        var cmd_vel;
+        var takeoff_topic;
+        var land_topic;
+        var flag=0;
+        var flag1;
+        var n=new Date();
+        function pub() {
+            var twist = new ROSLIB.Message({
+                linear : {
+                    x : x,
+                    y : y,
+                    z : z
+                },
+                angular : {
+                    x : 0,
+                    y : 0,
+                    z : theta
+                }
+            });
+            cmd_vel.publish(twist)
+        }
+        function takeoff() {
+            var empty = new ROSLIB.Message({});
+            takeoff_topic.publish(empty);
+        }
+        function land() {
+            var empty = new ROSLIB.Message({});
+            land_topic.publish(empty);
+        }
+        function handleKey(code, down) {
+            var scale = 0;
+            if (down == true) {
+                scale = 1;
+            }
+            switch (code) {
+                case 37:
+                    //left
+                        l=localStorage.getItem("left");
+                        r=localStorage.getItem("right");
+                        u=localStorage.getItem("up");
+                        d=localStorage.getItem("down");
+                        if(l==0&r==0&u==0&d==0)
+                        {
+                            l++;
+                        }
+                        else
+                        {
+                            l++;
+                            r=0;u=0;d=0;
+                        }
+                    theta = 1 * scale;
+                    localStorage.setItem("up",u);
+                    localStorage.setItem("left",l);
+                    localStorage.setItem("right",r);
+                    localStorage.setItem("down",d);
+                        if(flag==0)
+                        {
+                            flag1= Date.now();
+                            flag++;
+                        }
+                    break;
+                case 38:
+                    //up
+                    if(l==0&r==0&u==0&d==0)
+                    {
+                        u++;
+                    }
+                    else
+                    {
+                        u++;
+                        r=0;l=0;d=0;
+                    }
+                    x = .25 * scale;
+                    localStorage.setItem("up",u);
+                    localStorage.setItem("left",l);
+                    localStorage.setItem("right",r);
+                    localStorage.setItem("down",d);
+                    if(flag==0)
+                    {
+                        flag1= Date.now();
+                        flag++;
+                    }
+                    break;
+                case 39:
+                    //right
+                    if(l==0&r==0&u==0&d==0)
+                    {
+                        r++;
+                    }
+                    else
+                    {
+                        r++;
+                        u=0;l=0;d=0;
+                    }
+                    theta = -1 * scale;
+                    localStorage.setItem("up",u);
+                    localStorage.setItem("left",l);
+                    localStorage.setItem("right",r);
+                    localStorage.setItem("down",d);
+                    if(flag==0)
+                    {
+                        flag1= Date.now();
+                        flag++;
+                    }
+                    break;
+                case 40:
+                    //down
+                    if(l==0&r==0&u==0&d==0)
+                    {
+                        d++;
+                    }
+                    else
+                    {
+                        d++;
+                        u=0;l=0;r=0;
+                    }
+                    x = -.25 * scale;
+                    localStorage.setItem("up",u);
+                    localStorage.setItem("left",l);
+                    localStorage.setItem("right",r);
+                    localStorage.setItem("down",d);
+                    if(flag==0)
+                    {
+                        flag1= Date.now();
+                        flag++;
+                    }
+                    break;
+                case 90:
+                    //z
+                    y = .25 * scale;
+                    break;
+                case 88:
+                    //x
+                    y = -.25 * scale;
+                    break;
+                case 33:
+                    //pg up
+                    z = 0.25 * scale;
+                    break;
+                case 34:
+                    //pg down
+                    z = -0.25 * scale;
+                    break;
+                case 36:
+                    //home
+                    x = 0;
+                    y = 0;
+                    z = 0;
+                    theta = 0;
+                    takeoff();
+                    break;
+                case 35:
+                    //end
+                    x = 0;
+                    y = 0;
+                    z = 0;
+                    theta = 0;
+                    land();
+                    break;
+            }
+            pub();
+        }
+        function time()
+        {
+            var t;
+            t= Date.now();
+            flag1=t-flag1;
+            alert("Total time:"+(flag1/1000)+"seconds");
+        }
+        function main() {
+            x = 0;
+            y = 0;
+            z = 0;
+            theta = 0;
+			localStorage.setItem("up","0");
+            localStorage.setItem("left","0");
+            localStorage.setItem("right","0");
+            localStorage.setItem("down","0");
+            //img = document.getElementById("video");
+            //img.src = "http://139.78.141.251:8080/stream?topic=/ardrone/image";
+            ros = new ROSLIB.Ros({
+                url : 'ws://lear.cs.okstate.edu:9090'
+            });
+            cmd_vel = new ROSLIB.Topic({
+                ros : ros,
+                name : '/mobile_base/commands/velocity',
+                messageType : 'geometry_msgs/Twist'
+            });
+            takeoff_topic = new ROSLIB.Topic({
+                ros : ros,
+                name : '/ardrone/takeoff',
+                messageType : 'std_msgs/Empty'
+            });
+            land_topic = new ROSLIB.Topic({
+                ros : ros,
+                name : '/ardrone/land',
+                messageType : 'std_msgs/Empty'
+            });
+            document.addEventListener('keydown', function (e) {
+                handleKey(e.keyCode, true);
+            }, true);
+            document.addEventListener('keyup', function (e) {
+                handleKey(e.keyCode, false);
+            }, true);
+        }
+    </script>
+</head>
+<body onload="main();">
+<img id="video"></img>
+<p>Commands:</p>
+<hr>
+<table>
+    <tr>
+        <td>
+            <table>
+                <tr>
+                    <td /><td><input type="button" value="Takeoff" onmousedown="handleKey(36, true);" style="height:40px; width:100px"></td><td />
+                </tr>
+                <tr>
+                    <td /><td><input type="button" value="Land" onmousedown="handleKey(35, true);" style="height:40px; width:100px"></td><td />
+                </tr>
+                <tr>
+                    <td /><td><input type="button" value="Forward" onmousedown="handleKey(38, true);" onmouseup="handleKey(38, false);" style="height:40px; width:100px"></td><td />
+                </tr>
+                <tr>
+                    <td><input type="button" value="Turn Left" onmousedown="handleKey(37, true);" onmouseup="handleKey(37, false);" style="height:40px; width:100px"></td><td><input type="button" value="STOP" onmousedown="time();" style="height:40px; width:100px"></td><td><input type="button" value="Turn Right" onmousedown="handleKey(39, true);" onmouseup="handleKey(39, false);" style="height:40px; width:100px"></td>
+                </tr>
+                <tr>
+                    <td /><td><input type="button" value="Reverse" onmousedown="handleKey(40, true);" onmouseup="handleKey(40, false);" style="height:40px; width:100px"><td />
+                </tr>
+                <tr>
+                    <td /><td><input type="button" value="Climb" onmousedown="handleKey(33, true);" onmouseup="handleKey(33, false);" style="height:40px; width:100px"></td><td />
+                </tr>
+                <tr>
+                    <td><input type="button" value="Strafe Left" onmousedown="handleKey(90, true);" onmouseup="handleKey(90, false);" style="height:40px; width:100px"></td><td /><td><input type="button" value="Strafe Right" onmousedown="handleKey(88, true);" onmouseup="handleKey(88, false);" style="height:40px; width:100px"></td>
+                </tr>
+                <tr>
+                    <td /><td><input type="button" value="Descend" onmousedown="handleKey(34, true);" onmouseup="handleKey(34, false);" style="height:40px; width:100px"><td />
+                </tr>
+            </table>
+        <td>
+            <p>HOME: Takeoff<br>
+                END: Land<br>
+                PG UP: Climb<br>
+                PG DN: Descend<br>
+                UP ARROW: Go forward<br>
+                DOWN ARROW: Go backward<br>
+                LEFT ARROW: Turn left<br>
+                RIGHT ARROW: Turn right<br>
+                Z: Strafe left<br>
+                X: Strafe right<br></p>
+        </td>
+    </tr>
+</table>
+<hr>
+<!--<p>Go to <a href="pr2.html">PR2 demo</a></p>-->
+<!--<p>Go to <a href="create.html">Create demo</a></p>-->
+<!--<p>Go to <a href="http://www.cs.brown.edu/~jihoonl/Brown_Remote/ros.html">ROS Processing demo</a></p>-->
+</body>
+</html>
